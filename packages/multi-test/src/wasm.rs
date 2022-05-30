@@ -400,6 +400,22 @@ where
                 res.data = execute_response(res.data);
                 Ok(res)
             }
+            WasmMsg::UpdateAdmin { contract_addr, admin } => {
+                let address = api.addr_validate(&contract_addr)?;
+                let new_admin = api.addr_validate(&admin)?;
+                let mut data = self.load_contract(storage, &address)?;
+                if data.admin != Some(sender) {
+                    bail!("Only admin can change contract admin: {:?}", data.admin);
+                }
+                data.admin = Some(new_admin);
+                self.save_contract(storage, &address, &data)?;
+                let custom_event = Event::new("update_admin")
+                    .add_attribute(CONTRACT_ATTR, &contract_addr)
+                    .add_attribute("new_admin", admin);
+                let mut res = AppResponse::default();
+                res.events.push(custom_event);
+                Ok(res)
+            },
             msg => bail!(Error::UnsupportedWasmMsg(msg)),
         }
     }
